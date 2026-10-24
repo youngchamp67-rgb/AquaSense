@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080d10">
+  <meta name="description" content="AquaSense is a local water-quality monitoring dashboard for pH, TDS and temperature readings.">
+  <title>{% block title %}AquaSense · Water quality monitor{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}?v={{ app_version }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v={{ app_version }}">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{{ url_for('pages.dashboard') }}" aria-label="AquaSense dashboard home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2.8c3.1 3.6 6.2 7.4 6.2 11.1a6.2 6.2 0 0 1-12.4 0C5.8 10.2 8.9 6.4 12 2.8Z"/>
+            <path d="M8.8 14.1c.2 1.7 1.4 2.9 3.1 3.2"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">Aqua<span>Sense</span></span>
+          <span class="brand-sub">Water quality monitor</span>
+        </span>
+      </a>
+
+      <div class="header-meta">
+        <span class="phase-badge">Phase 1</span>
+        <span class="local-chip">
+          <span class="local-chip-dot" aria-hidden="true"></span>
+          Local instance
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="shell page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <p>AquaSense is a local monitoring tool. It does not certify water as safe to drink.</p>
+      <p class="footer-meta">v{{ app_version }} · Phase 1</p>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

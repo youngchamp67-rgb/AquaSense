@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · AquaSense{% endblock %}
+
+{% block content %}
+<div class="dashboard" data-dashboard data-poll-interval="{{ poll_interval_seconds }}">
+
+  <div class="page-head">
+    <div class="page-title-group">
+      <div class="eyebrow-row">
+        <p class="eyebrow">Dashboard</p>
+        <span class="status-pill status-pill--small" data-receiver-status data-status="{{ snapshot.receiver.status }}">{{ snapshot.receiver.label }}</span>
+      </div>
+      <h1>Water quality overview</h1>
+      <p class="page-lead">A local view of the AquaSense receiver’s pH, TDS and temperature telemetry.</p>
+    </div>
+
+    <div class="page-actions">
+      <div class="last-reading">
+        <span class="data-label">Last reading</span>
+        <span class="data-value" data-last-updated>No data received</span>
+        <span class="data-sub" data-last-received>Awaiting receiver</span>
+      </div>
+      <button type="button" class="button" data-refresh>
+        <svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.3 5.6"/>
+          <path d="M20 4v7h-7"/>
+        </svg>
+        <span data-refresh-label>Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="notice" role="note">
+    <svg class="notice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 11v5"/>
+      <path d="M12 7.5h.01"/>
+    </svg>
+    <p><strong>Awaiting receiver integration.</strong> No sensor readings have been received. Values are deliberately shown as unavailable and are never estimated or simulated.</p>
+  </div>
+
+  <div class="alert alert--error" role="alert" data-error-banner hidden>
+    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.8 3h15.6a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>
+      <path d="M12 9v4"/>
+      <path d="M12 17h.01"/>
+    </svg>
+    <div class="alert-body">
+      <strong>Live data could not be refreshed.</strong>
+      <p data-error-message>The AquaSense API did not respond.</p>
+    </div>
+    <button type="button" class="button button--compact" data-retry>Retry</button>
+  </div>
+
+  <section class="sensor-grid" aria-label="Sensor readings">
+    <article class="card sensor-card" data-sensor-card="ph" aria-labelledby="ph-label">
+      <div class="card-top">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"/>
+            <path d="M10 3v6.2a5.5 5.5 0 1 0 4 0V3"/>
+            <path d="M8.2 16.4h7.6"/>
+          </svg>
+        </span>
+        <span class="status-chip" data-sensor-state="ph">No data</span>
+      </div>
+      <h2 class="sensor-label" id="ph-label">pH</h2>
+      <p class="sensor-description">Acidity / alkalinity · SEN0169</p>
+      <div class="sensor-reading">
+        <output class="sensor-value is-empty" data-sensor-value="ph">—</output>
+        <span class="sensor-unit">pH</span>
+      </div>
+      <p class="sensor-empty" data-sensor-empty="ph">No reading received</p>
+    </article>
+
+    <article class="card sensor-card" data-sensor-card="tds_ppm" aria-labelledby="tds-label">
+      <div class="card-top">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3s6 6.2 6 10.2A6 6 0 0 1 6 13.2C6 9.2 12 3 12 3Z"/>
+            <path d="M9.4 13.4h.01"/>
+            <path d="M12.4 15.6h.01"/>
+            <path d="M14.5 12h.01"/>
+          </svg>
+        </span>
+        <span class="status-chip" data-sensor-state="tds_ppm">No data</span>
+      </div>
+      <h2 class="sensor-label" id="tds-label">TDS</h2>
+      <p class="sensor-description">Total dissolved solids · Gravity</p>
+      <div class="sensor-reading">
+        <output class="sensor-value is-empty" data-sensor-value="tds_ppm">—</output>
+        <span class="sensor-unit">ppm</span>
+      </div>
+      <p class="sensor-empty" data-sensor-empty="tds_ppm">No reading received</p>
+    </article>
+
+    <article class="card sensor-card" data-sensor-card="temperature_c" aria-labelledby="temperature-label">
+      <div class="card-top">
+        <span class="sensor-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13.5V5a2 2 0 1 1 4 0v8.5a4 4 0 1 1-4 0Z"/>
+            <path d="M12 9v7.2"/>
+          </svg>
+        </span>
+        <span class="status-chip" data-sensor-state="temperature_c">No data</span>
+      </div>
+      <h2 class="sensor-label" id="temperature-label">Temperature</h2>
+      <p class="sensor-description">Water temperature · DS18B20</p>
+      <div class="sensor-reading">
+        <output class="sensor-value is-empty" data-sensor-value="temperature_c">—</output>
+        <span class="sensor-unit">°C</span>
+      </div>
+      <p class="sensor-empty" data-sensor-empty="temperature_c">No reading received</p>
+    </article>
+  </section>
+
+  <div class="dashboard-grid">
+    <section class="panel chart-panel" aria-labelledby="chart-heading">
+      <div class="panel-head">
+        <div>
+          <h2 class="panel-title" id="chart-heading">Sensor trend</h2>
+          <p class="panel-subtitle">Historical readings from the receiver</p>
+        </div>
+        <span class="meta-tag">No history</span>
+      </div>
+
+      <div class="chart-legend" aria-hidden="true">
+        <span class="legend-item legend-ph"><span class="legend-dot"></span>pH</span>
+        <span class="legend-item legend-tds"><span class="legend-dot"></span>TDS</span>
+        <span class="legend-item legend-temp"><span class="legend-dot"></span>Temperature</span>
+      </div>
+
+      <div class="chart-area" role="img" aria-label="Empty sensor trend chart. No historical data is available yet.">
+        <div class="chart-empty">
+          <span class="chart-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 15.5 7 10l3.6 3.2L15 7l6 7.5"/>
+              <path d="M3 19h18"/>
+            </svg>
+          </span>
+          <h3>No trend data yet</h3>
+          <p>Timestamped readings will appear here once the receiver is integrated.</p>
+        </div>
+        <span class="chart-axis-note" aria-hidden="true">Chart ready · Phase 2</span>
+      </div>
+    </section>
+
+    <aside class="panel status-panel" aria-labelledby="status-heading">
+      <div class="panel-head">
+        <div>
+          <h2 class="panel-title" id="status-heading">System status</h2>
+          <p class="panel-subtitle">Connection and data source</p>
+        </div>
+      </div>
+
+      <dl class="status-list">
+        <div class="status-row">
+          <dt>Receiver</dt>
+          <dd>
+            <span class="status-pill" data-receiver-status data-status="{{ snapshot.receiver.status }}">{{ snapshot.receiver.label }}</span>
+          </dd>
+        </div>
+        <div class="status-row">
+          <dt>Data transport</dt>
+          <dd data-transport-state>Not configured</dd>
+        </div>
+        <div class="status-row">
+          <dt>Last contact</dt>
+          <dd data-last-contact>—</dd>
+        </div>
+        <div class="status-row">
+          <dt>Dashboard API</dt>
+          <dd>
+            <span class="status-dot" data-api-dot aria-hidden="true"></span>
+            <span data-api-status>Checking…</span>
+          </dd>
+        </div>
+        <div class="status-row">
+          <dt>Data mode</dt>
+          <dd>No simulation</dd>
+        </div>
+      </dl>
+
+      <p class="panel-note">No serial, HTTP or LoRa packet format is assumed in Phase 1. Receiver integration is intentionally disabled.</p>
+    </aside>
+  </div>
+
+  <section class="panel readings-panel" aria-labelledby="readings-heading">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title" id="readings-heading">Recent readings</h2>
+        <p class="panel-subtitle">Samples reported by the AquaSense receiver</p>
+      </div>
+      <span class="meta-tag" data-readings-count>0 readings</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden">Most recent sensor readings received from the receiver</caption>
+        <thead>
+          <tr>
+            <th scope="col">Recorded</th>
+            <th scope="col">pH</th>
+            <th scope="col">TDS</th>
+            <th scope="col">Temperature</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody data-readings-body>
+          <tr class="empty-row" data-empty-readings>
+            <td colspan="5">
+              <div class="empty-state">
+                <span class="empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 6h14"/>
+                    <path d="M5 12h14"/>
+                    <path d="M5 18h8"/>
+                  </svg>
+                </span>
+                <strong>No readings received yet</strong>
+                <p>The dashboard has not received any sensor data from the receiver.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="visually-hidden" role="status" aria-live="polite" data-status-live></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ app_version }}" defer></script>
+{% endblock %}
