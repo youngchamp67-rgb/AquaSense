@@ -7,10 +7,13 @@
   }
 
   const REQUEST_TIMEOUT_MS = 8000;
+  const HISTORY_LIMIT = 10;
   const SENSOR_KEYS = ["ph", "tds_ppm", "temperature_c"];
   const KNOWN_RECEIVER_STATES = new Set([
     "NOT_CONNECTED",
     "WAITING_FOR_DATA",
+    "RECENT_DATA",
+    "STALE_DATA",
     "CONNECTED",
   ]);
 
@@ -27,8 +30,12 @@
     lastReceived: root.querySelector("[data-last-received]"),
     errorBanner: root.querySelector("[data-error-banner]"),
     errorMessage: root.querySelector("[data-error-message]"),
+    staleBanner: root.querySelector("[data-stale-banner]"),
+    staleMessage: root.querySelector("[data-stale-message]"),
     retry: root.querySelector("[data-retry]"),
     receiverPills: root.querySelectorAll("[data-receiver-status]"),
+    latestSource: root.querySelector("[data-latest-source]"),
+    latestSequence: root.querySelector("[data-latest-sequence]"),
     transport: root.querySelector("[data-transport-state]"),
     lastContact: root.querySelector("[data-last-contact]"),
     apiStatus: root.querySelector("[data-api-status]"),
@@ -36,12 +43,23 @@
     liveStatus: root.querySelector("[data-status-live]"),
     readingsBody: root.querySelector("[data-readings-body]"),
     readingsCount: root.querySelector("[data-readings-count]"),
+    chartArea: root.querySelector("[data-chart-area]"),
+    chartEmpty: root.querySelector("[data-chart-empty]"),
+    chartLanes: root.querySelector("[data-trend-lanes]"),
+    chartMeta: root.querySelector("[data-chart-meta]"),
+    chartNote: root.querySelector("[data-chart-note]"),
   };
 
   const sensors = {
     ph: readSensor("ph"),
     tds_ppm: readSensor("tds_ppm"),
     temperature_c: readSensor("temperature_c"),
+  };
+
+  const trends = {
+    ph: readTrend("ph"),
+    tds_ppm: readTrend("tds_ppm"),
+    temperature_c: readTrend("temperature_c"),
   };
 
   const emptyReadingsRow =
@@ -85,6 +103,19 @@
       value: card.querySelector("[data-sensor-value]"),
       state: card.querySelector("[data-sensor-state]"),
       empty: card.querySelector("[data-sensor-empty]"),
+    };
+  }
+
+  function readTrend(key) {
+    const lane = root.querySelector(`[data-trend-lane="${key}"]`);
+    if (!lane) {
+      return null;
+    }
+
+    return {
+      range: lane.querySelector("[data-trend-range]"),
+      path: lane.querySelector("[data-trend-path]"),
+      dot: lane.querySelector("[data-trend-dot]"),
     };
   }
 
@@ -206,8 +237,25 @@
   }
 
   /**
+   * Read one nullable measurement without treating a missing value as zero.
+   * Returns `undefined` for malformed values.
+   */
+  function readMeasurement(reading, key) {
+    if (!Object.prototype.hasOwnProperty.call(reading, key)) {
+      return undefined;
+    }
+
+    const value = reading[key];
+    if (value === null) {
+      return null;
+    }
+
+    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  }
+
+  /**
    * Render the latest reading. Returns false when `available` is true but the
-   * payload is incomplete, so the dashboard can show an error instead of
+   * payload is malformed, so the dashboard can show an error instead of
    * filling missing values with estimates.
    */
   function applyReadings(data) {
@@ -234,11 +282,21 @@
         ? data.readings
         : {};
 
-    const complete = SENSOR_KEYS.every(
-      (key) => typeof reading[key] === "number" && Number.isFinite(reading[key]),
-    );
+    const values = {};
+    let hasMeasurement = false;
 
-    if (!complete) {
+    for (const key of SENSOR_KEYS) {
+      const value = readMeasurement(reading, key);
+      if (value === undefined) {
+        return false;
+      }
+      values[key] = value;
+      if (value !== null) {
+        hasMeasurement = true;
+      }
+    }
+
+    if (!hasMeasurement) {
       return false;
     }
 
@@ -250,12 +308,23 @@
         return;
       }
 
-      sensor.value.textContent = formatReadingValue(key, reading[key]);
+      const value = values[key];
+      if (value === null) {
+        sensor.value.textContent = "—";
+        sensor.value.classList.add("is-empty");
+        sensor.state.textContent = "No data";
+        sensor.state.classList.remove("is-received", "is-error");
+        sensor.empty.textContent = "Not included in this reading";
+        sensor.card.classList.remove("is-loading");
+        return;
+      }
+
+      sensor.value.textContent = formatReadingValue(key, value);
       sensor.value.classList.remove("is-empty");
       sensor.state.textContent = "Received";
       sensor.state.classList.remove("is-error");
       sensor.state.classList.add("is-received");
-      sensor.empty.textContent = "Latest received value";
+      sensor.empty.textContent = "Latest persisted value";
     });
 
     const recordedLabel = formatTimestamp(data.recorded_at);
@@ -274,10 +343,42 @@
 
     els.lastContact.textContent =
       receivedLabel || recordedLabel || "Time unavailable";
-    els.readingsCount.textContent = "1 reading";
 
-    renderReadingRow(reading, recordedLabel);
+    els.latestSource.textContent =
+      typeof data.source === "string" && data.source.length > 0
+        ? data.source
+        : "—";
+    els.latestSequence.textContent = Number.isInteger(data.packet_sequence)
+      ? String(data.packet_sequence)
+      : "—";
+
+    updateStaleState(data, receivedLabel);
     return true;
+  }
+
+  function updateStaleState(data, receivedLabel) {
+    const receiver =
+      typeof data.receiver === "object" && data.receiver !== null
+        ? data.receiver
+        : {};
+    const isStale =
+      data.state === "stale" || receiver.status === "STALE_DATA";
+
+    if (!isStale) {
+      els.staleBanner.hidden = true;
+      els.staleMessage.textContent = "";
+      return;
+    }
+
+    const detail =
+      typeof data.message === "string" && data.message.length > 0
+        ? data.message.replace(/^Latest reading is stale:\s*/i, "")
+        : "No new reading has arrived within the freshness threshold.";
+    const message = detail.charAt(0).toUpperCase() + detail.slice(1);
+    els.staleMessage.textContent = receivedLabel
+      ? `${message} Last received ${receivedLabel}.`
+      : message;
+    els.staleBanner.hidden = false;
   }
 
   function renderNoReading() {
@@ -301,37 +402,142 @@
     els.lastUpdated.removeAttribute("title");
     els.lastReceived.textContent = "Awaiting receiver";
     els.lastContact.textContent = "—";
+    els.latestSource.textContent = "—";
+    els.latestSequence.textContent = "—";
+    els.staleBanner.hidden = true;
+    els.staleMessage.textContent = "";
     els.readingsCount.textContent = "0 readings";
     resetReadings();
+    resetTrend();
   }
 
-  function renderReadingRow(reading, recordedLabel) {
+  function applyHistory(data) {
+    if (
+      !data ||
+      typeof data !== "object" ||
+      !Array.isArray(data.items)
+    ) {
+      return false;
+    }
+
+    if (data.items.length === 0) {
+      els.readingsCount.textContent = "0 readings";
+      resetReadings();
+      resetTrend();
+      return true;
+    }
+
+    const items = [];
+    for (const item of data.items) {
+      if (!item || typeof item !== "object") {
+        return false;
+      }
+
+      const reading =
+        typeof item.readings === "object" && item.readings !== null
+          ? item.readings
+          : null;
+      if (!reading) {
+        return false;
+      }
+
+      const values = {};
+      for (const key of SENSOR_KEYS) {
+        const value = readMeasurement(reading, key);
+        if (value === undefined) {
+          return false;
+        }
+        values[key] = value;
+      }
+
+      const recordedMs =
+        typeof item.recorded_at === "string"
+          ? Date.parse(item.recorded_at)
+          : Number.NaN;
+      if (!Number.isFinite(recordedMs)) {
+        return false;
+      }
+
+      const source =
+        typeof item.source === "string" && item.source.length > 0
+          ? item.source
+          : "—";
+      const packetSequence = Number.isInteger(item.packet_sequence)
+        ? item.packet_sequence
+        : null;
+
+      items.push({
+        id: Number.isInteger(item.id) ? item.id : 0,
+        values,
+        recordedMs,
+        recordedLabel: formatTimestamp(item.recorded_at) || "Time unavailable",
+        source,
+        packetSequence,
+      });
+    }
+
+    renderReadings(items);
+    renderTrend(items);
+    els.readingsCount.textContent =
+      `${items.length} ${items.length === 1 ? "reading" : "readings"}`;
+    return true;
+  }
+
+  function makeCell(text, className) {
+    const cell = document.createElement("td");
+    if (className) {
+      cell.className = className;
+    }
+    cell.textContent = text;
+    return cell;
+  }
+
+  function renderReadings(items) {
     if (!els.readingsBody) {
       return;
     }
 
-    const row = document.createElement("tr");
-    const cells = [
-      { text: recordedLabel || "Time unavailable" },
-      { text: formatReadingValue("ph", reading.ph), className: "numeric" },
-      { text: formatReadingValue("tds_ppm", reading.tds_ppm), className: "numeric" },
-      {
-        text: formatReadingValue("temperature_c", reading.temperature_c),
-        className: "numeric",
-      },
-      { text: "Received", className: "reading-status" },
-    ];
+    const fragment = document.createDocumentFragment();
 
-    cells.forEach(({ text, className }) => {
-      const cell = document.createElement("td");
-      if (className) {
-        cell.className = className;
+    items.forEach((item) => {
+      const row = document.createElement("tr");
+      const recordedCell = makeCell(item.recordedLabel, "recorded-cell");
+      if (item.source !== "—") {
+        const inlineSource = document.createElement("span");
+        inlineSource.className = "row-source-inline";
+        inlineSource.textContent = item.source;
+        recordedCell.append(inlineSource);
       }
-      cell.textContent = text;
-      row.append(cell);
+      row.append(recordedCell);
+
+      SENSOR_KEYS.forEach((key) => {
+        const value = item.values[key];
+        const cell = makeCell(
+          value === null ? "—" : formatReadingValue(key, value),
+          "numeric",
+        );
+        if (value === null) {
+          cell.classList.add("is-empty-value");
+        }
+        row.append(cell);
+      });
+
+      const sourceCell = makeCell(item.source, "source-cell");
+      const titleParts = [];
+      if (item.source !== "—") {
+        titleParts.push(item.source);
+      }
+      if (item.packetSequence !== null) {
+        titleParts.push(`Packet sequence ${item.packetSequence}`);
+      }
+      if (titleParts.length > 0) {
+        sourceCell.title = titleParts.join(" · ");
+      }
+      row.append(sourceCell);
+      fragment.append(row);
     });
 
-    els.readingsBody.replaceChildren(row);
+    els.readingsBody.replaceChildren(fragment);
   }
 
   function resetReadings() {
@@ -343,6 +549,135 @@
       els.readingsBody.replaceChildren(emptyReadingsRow.cloneNode(true));
     } else {
       els.readingsBody.replaceChildren();
+    }
+  }
+
+  function renderTrend(items) {
+    if (!els.chartArea) {
+      return;
+    }
+
+    const chronological = items
+      .slice()
+      .sort((left, right) => left.recordedMs - right.recordedMs || left.id - right.id);
+    const times = chronological.map((item) => item.recordedMs);
+    const minTime = Math.min(...times);
+    const maxTime = Math.max(...times);
+    const width = 600;
+    const height = 44;
+    const padX = 4;
+    const padY = 6;
+
+    SENSOR_KEYS.forEach((key) => {
+      const trend = trends[key];
+      if (!trend) {
+        return;
+      }
+
+      const points = chronological.map((item) => {
+        const value = item.values[key];
+        if (value === null) {
+          return { value: null, x: null };
+        }
+
+        const x =
+          maxTime === minTime
+            ? width / 2
+            : padX +
+              ((item.recordedMs - minTime) / (maxTime - minTime)) *
+                (width - padX * 2);
+        return { value, x };
+      });
+
+      const values = points
+        .map((point) => point.value)
+        .filter((value) => value !== null);
+
+      if (values.length === 0) {
+        trend.range.textContent = "No data";
+        trend.path.setAttribute("d", "");
+        trend.dot.setAttribute("hidden", "");
+        return;
+      }
+
+      const minimum = Math.min(...values);
+      const maximum = Math.max(...values);
+      const yFor = (value) =>
+        maximum === minimum
+          ? height / 2
+          : padY +
+            (1 - (value - minimum) / (maximum - minimum)) * (height - padY * 2);
+
+      let pathData = "";
+      let hasPreviousPoint = false;
+      points.forEach((point) => {
+        if (point.value === null) {
+          hasPreviousPoint = false;
+          return;
+        }
+
+        const y = yFor(point.value);
+        pathData += `${hasPreviousPoint ? "L" : "M"}${point.x.toFixed(1)} ${y.toFixed(1)} `;
+        hasPreviousPoint = true;
+      });
+
+      trend.path.setAttribute("d", pathData.trim());
+      trend.range.textContent =
+        `${formatReadingValue(key, minimum)} – ${formatReadingValue(key, maximum)}`;
+
+      const lastPoint = [...points]
+        .reverse()
+        .find((point) => point.value !== null);
+      if (lastPoint && lastPoint.x !== null) {
+        trend.dot.setAttribute("cx", lastPoint.x.toFixed(1));
+        trend.dot.setAttribute("cy", yFor(lastPoint.value).toFixed(1));
+        trend.dot.removeAttribute("hidden");
+      } else {
+        trend.dot.setAttribute("hidden", "");
+      }
+    });
+
+    els.chartEmpty.hidden = true;
+    els.chartLanes.hidden = false;
+    els.chartArea.classList.add("has-data");
+    els.chartMeta.textContent =
+      `${items.length} ${items.length === 1 ? "reading" : "readings"}`;
+    els.chartNote.textContent = "Recorded time · oldest → newest";
+    els.chartArea.setAttribute(
+      "aria-label",
+      `Sensor trend chart with ${items.length} persisted readings. pH, TDS and temperature each use an independent vertical scale.`,
+    );
+  }
+
+  function resetTrend() {
+    SENSOR_KEYS.forEach((key) => {
+      const trend = trends[key];
+      if (!trend) {
+        return;
+      }
+      trend.range.textContent = "No data";
+      trend.path.setAttribute("d", "");
+      trend.dot.setAttribute("hidden", "");
+    });
+
+    if (els.chartEmpty) {
+      els.chartEmpty.hidden = false;
+    }
+    if (els.chartLanes) {
+      els.chartLanes.hidden = true;
+    }
+    if (els.chartArea) {
+      els.chartArea.classList.remove("has-data");
+      els.chartArea.setAttribute(
+        "aria-label",
+        "Empty sensor trend chart. No persisted readings are available.",
+      );
+    }
+    if (els.chartMeta) {
+      els.chartMeta.textContent = "No history";
+    }
+    if (els.chartNote) {
+      els.chartNote.textContent = "No persisted readings";
     }
   }
 
@@ -392,6 +727,10 @@
       const results = await Promise.allSettled([
         fetchJson("/api/health", controller.signal),
         fetchJson("/api/readings/latest", controller.signal),
+        fetchJson(
+          `/api/readings/history?limit=${HISTORY_LIMIT}`,
+          controller.signal,
+        ),
       ]);
 
       // A newer refresh superseded this request; let that one own the UI.
@@ -406,7 +745,7 @@
         return;
       }
 
-      const [healthResult, readingsResult] = results;
+      const [healthResult, readingsResult, historyResult] = results;
       let failureMessage = null;
 
       if (healthResult.status === "fulfilled") {
@@ -420,12 +759,24 @@
         const applied = applyReadings(readingsResult.value);
         if (!applied) {
           failureMessage =
-            "The receiver returned an incomplete reading. Values were not displayed rather than estimated.";
+            "The latest reading returned malformed data. Values were not displayed rather than estimated.";
         }
       } else {
         failureMessage =
           failureMessage ||
           "The latest reading could not be fetched from the dashboard API.";
+      }
+
+      if (historyResult.status === "fulfilled") {
+        const applied = applyHistory(historyResult.value);
+        if (!applied) {
+          failureMessage =
+            "The reading history returned malformed data. Values were not displayed rather than estimated.";
+        }
+      } else {
+        failureMessage =
+          failureMessage ||
+          "Recent readings could not be fetched from the dashboard API.";
       }
 
       if (failureMessage) {
@@ -480,7 +831,7 @@
     }
   }, pollIntervalMs);
 
-  // Initial hydration. The server-rendered page already shows the honest
-  // empty state; this confirms it against the API and wires up live polling.
+  // Initial hydration. The server-rendered page shows the empty state until
+  // the read-only APIs provide persisted measurements.
   loadDashboard();
 })();

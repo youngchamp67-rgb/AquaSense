@@ -20,8 +20,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Runtime data (reserved for later phases)
+# Runtime data
 instance/
 *.sqlite3
+*.db
 *.db
 *.sqlite

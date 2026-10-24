@@ -1,5 +1,5 @@
 /* ==========================================================================
-   AquaSense — Phase 1 dashboard
+   AquaSense — Phase 2 dashboard
    Dark engineering theme: charcoal surfaces, teal accents, subtle borders.
    ========================================================================== */
 
@@ -474,6 +474,20 @@ h1 {
   font-size: 0.78rem;
 }
 
+.alert--warning {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: rgba(251, 191, 36, 0.07);
+  color: #fde68a;
+}
+
+.alert--warning .alert-icon {
+  color: var(--amber);
+}
+
+.alert--warning .alert-body p {
+  color: #fcd34d;
+}
+
 /* --------------------------------------------------------------------------
    Sensor cards
    -------------------------------------------------------------------------- */
@@ -677,41 +691,6 @@ h1 {
   flex-direction: column;
 }
 
-.chart-legend {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex-wrap: wrap;
-  padding: 13px 22px 0;
-  color: var(--text-muted);
-  font-size: 0.71rem;
-}
-
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.legend-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.legend-ph {
-  color: var(--teal);
-}
-
-.legend-tds {
-  color: #60a5fa;
-}
-
-.legend-temp {
-  color: #fbbf24;
-}
-
 .chart-area {
   position: relative;
   display: grid;
@@ -727,6 +706,11 @@ h1 {
     linear-gradient(rgba(148, 180, 185, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(148, 180, 185, 0.055) 1px, transparent 1px);
   background-size: 100% 48px, 64px 100%;
+}
+
+.chart-area.has-data {
+  display: block;
+  padding: 16px 16px 28px;
 }
 
 .chart-empty {
@@ -762,6 +746,104 @@ h1 {
   margin: 0;
   color: var(--text-faint);
   font-size: 0.77rem;
+}
+
+.trend-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  width: 100%;
+}
+
+.trend-lane {
+  min-width: 0;
+}
+
+.trend-lane-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 3px;
+}
+
+.trend-name,
+.trend-range {
+  font-family: var(--font-mono);
+  font-size: 0.61rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.trend-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.trend-name::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.trend-name--ph {
+  color: var(--teal);
+}
+
+.trend-name--tds {
+  color: #60a5fa;
+}
+
+.trend-name--temp {
+  color: var(--amber);
+}
+
+.trend-range {
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: 42px;
+  overflow: visible;
+}
+
+.trend-path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.trend-path--ph,
+.trend-dot--ph {
+  stroke: var(--teal);
+  fill: var(--teal);
+}
+
+.trend-path--tds,
+.trend-dot--tds {
+  stroke: #60a5fa;
+  fill: #60a5fa;
+}
+
+.trend-path--temp,
+.trend-dot--temp {
+  stroke: var(--amber);
+  fill: var(--amber);
+}
+
+.trend-dot {
+  filter: drop-shadow(0 0 4px rgba(94, 234, 212, 0.35));
 }
 
 .chart-axis-note {
@@ -858,14 +940,26 @@ h1 {
   animation: breathe 2.6s ease-in-out infinite;
 }
 
+.status-pill[data-status="RECENT_DATA"],
 .status-pill[data-status="CONNECTED"] {
   border-color: var(--teal-line);
   background: var(--teal-soft);
   color: var(--teal-bright);
 }
 
+.status-pill[data-status="RECENT_DATA"]::before,
 .status-pill[data-status="CONNECTED"]::before {
   background: var(--teal);
+}
+
+.status-pill[data-status="STALE_DATA"] {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: rgba(251, 191, 36, 0.07);
+  color: #fcd34d;
+}
+
+.status-pill[data-status="STALE_DATA"]::before {
+  background: var(--amber);
 }
 
 .status-pill[data-status="UNKNOWN"] {
@@ -957,12 +1051,22 @@ tbody .numeric {
   font-variant-numeric: tabular-nums;
 }
 
-tbody .reading-status {
-  color: var(--teal-bright);
+tbody .is-empty-value {
+  color: var(--text-faint);
+}
+
+tbody .source-cell {
+  max-width: 200px;
+  overflow: hidden;
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-source-inline {
+  display: none;
 }
 
 .empty-row td {
@@ -1108,14 +1212,9 @@ tbody .reading-status {
     padding-inline: 18px;
   }
 
-  .chart-legend,
   .chart-area,
   .status-list {
     margin-inline: 18px;
-  }
-
-  .chart-legend {
-    padding-inline: 0;
   }
 
   .panel-note {
@@ -1176,6 +1275,21 @@ tbody .reading-status {
   thead th {
     font-size: 0.58rem;
     letter-spacing: 0.1em;
+  }
+
+  thead th:nth-child(5),
+  tbody td:nth-child(5) {
+    display: none;
+  }
+
+  .row-source-inline {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.63rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
   .chart-empty {

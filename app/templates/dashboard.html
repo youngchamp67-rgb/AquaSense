@@ -12,7 +12,7 @@
         <span class="status-pill status-pill--small" data-receiver-status data-status="{{ snapshot.receiver.status }}">{{ snapshot.receiver.label }}</span>
       </div>
       <h1>Water quality overview</h1>
-      <p class="page-lead">A local view of the AquaSense receiver’s pH, TDS and temperature telemetry.</p>
+      <p class="page-lead">A local view of persisted AquaSense readings for pH, TDS and temperature.</p>
     </div>
 
     <div class="page-actions">
@@ -37,7 +37,18 @@
       <path d="M12 11v5"/>
       <path d="M12 7.5h.01"/>
     </svg>
-    <p><strong>Awaiting receiver integration.</strong> No sensor readings have been received. Values are deliberately shown as unavailable and are never estimated or simulated.</p>
+    <p><strong>Recorded data only.</strong> Values come from persisted readings. Missing measurements are shown as unavailable and are never estimated or simulated. This dashboard does not determine whether water is safe to drink.</p>
+  </div>
+
+  <div class="alert alert--warning" role="status" data-stale-banner hidden>
+    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7.5V12l3 2"/>
+    </svg>
+    <div class="alert-body">
+      <strong>Latest reading is stale.</strong>
+      <p data-stale-message>No new reading has arrived within the freshness threshold.</p>
+    </div>
   </div>
 
   <div class="alert alert--error" role="alert" data-error-banner hidden>
@@ -120,19 +131,13 @@
       <div class="panel-head">
         <div>
           <h2 class="panel-title" id="chart-heading">Sensor trend</h2>
-          <p class="panel-subtitle">Historical readings from the receiver</p>
+          <p class="panel-subtitle">Most recent persisted readings</p>
         </div>
-        <span class="meta-tag">No history</span>
+        <span class="meta-tag" data-chart-meta>No history</span>
       </div>
 
-      <div class="chart-legend" aria-hidden="true">
-        <span class="legend-item legend-ph"><span class="legend-dot"></span>pH</span>
-        <span class="legend-item legend-tds"><span class="legend-dot"></span>TDS</span>
-        <span class="legend-item legend-temp"><span class="legend-dot"></span>Temperature</span>
-      </div>
-
-      <div class="chart-area" role="img" aria-label="Empty sensor trend chart. No historical data is available yet.">
-        <div class="chart-empty">
+      <div class="chart-area" data-chart-area role="img" aria-label="Empty sensor trend chart. No persisted readings are available.">
+        <div class="chart-empty" data-chart-empty>
           <span class="chart-empty-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 15.5 7 10l3.6 3.2L15 7l6 7.5"/>
@@ -140,9 +145,43 @@
             </svg>
           </span>
           <h3>No trend data yet</h3>
-          <p>Timestamped readings will appear here once the receiver is integrated.</p>
+          <p>Persisted readings will be charted here once the local database contains data.</p>
         </div>
-        <span class="chart-axis-note" aria-hidden="true">Chart ready · Phase 2</span>
+
+        <div class="trend-lanes" data-trend-lanes hidden>
+          <div class="trend-lane" data-trend-lane="ph">
+            <div class="trend-lane-head">
+              <span class="trend-name trend-name--ph">pH</span>
+              <span class="trend-range" data-trend-range="ph">No data</span>
+            </div>
+            <svg class="trend-svg" viewBox="0 0 600 44" preserveAspectRatio="none" aria-hidden="true">
+              <path class="trend-path trend-path--ph" data-trend-path="ph" d=""></path>
+              <circle class="trend-dot trend-dot--ph" data-trend-dot="ph" cx="0" cy="0" r="2.7" hidden></circle>
+            </svg>
+          </div>
+          <div class="trend-lane" data-trend-lane="tds_ppm">
+            <div class="trend-lane-head">
+              <span class="trend-name trend-name--tds">TDS · ppm</span>
+              <span class="trend-range" data-trend-range="tds_ppm">No data</span>
+            </div>
+            <svg class="trend-svg" viewBox="0 0 600 44" preserveAspectRatio="none" aria-hidden="true">
+              <path class="trend-path trend-path--tds" data-trend-path="tds_ppm" d=""></path>
+              <circle class="trend-dot trend-dot--tds" data-trend-dot="tds_ppm" cx="0" cy="0" r="2.7" hidden></circle>
+            </svg>
+          </div>
+          <div class="trend-lane" data-trend-lane="temperature_c">
+            <div class="trend-lane-head">
+              <span class="trend-name trend-name--temp">Temperature · °C</span>
+              <span class="trend-range" data-trend-range="temperature_c">No data</span>
+            </div>
+            <svg class="trend-svg" viewBox="0 0 600 44" preserveAspectRatio="none" aria-hidden="true">
+              <path class="trend-path trend-path--temp" data-trend-path="temperature_c" d=""></path>
+              <circle class="trend-dot trend-dot--temp" data-trend-dot="temperature_c" cx="0" cy="0" r="2.7" hidden></circle>
+            </svg>
+          </div>
+        </div>
+
+        <span class="chart-axis-note" data-chart-note aria-hidden="true">No persisted readings</span>
       </div>
     </section>
 
@@ -160,6 +199,14 @@
           <dd>
             <span class="status-pill" data-receiver-status data-status="{{ snapshot.receiver.status }}">{{ snapshot.receiver.label }}</span>
           </dd>
+        </div>
+        <div class="status-row">
+          <dt>Latest source</dt>
+          <dd data-latest-source>—</dd>
+        </div>
+        <div class="status-row">
+          <dt>Packet sequence</dt>
+          <dd data-latest-sequence>—</dd>
         </div>
         <div class="status-row">
           <dt>Data transport</dt>
@@ -182,7 +229,7 @@
         </div>
       </dl>
 
-      <p class="panel-note">No serial, HTTP or LoRa packet format is assumed in Phase 1. Receiver integration is intentionally disabled.</p>
+      <p class="panel-note">Readings are stored in local SQLite and served read-only. No receiver transport or packet format is assumed in Phase 2.</p>
     </aside>
   </div>
 
@@ -190,7 +237,7 @@
     <div class="panel-head">
       <div>
         <h2 class="panel-title" id="readings-heading">Recent readings</h2>
-        <p class="panel-subtitle">Samples reported by the AquaSense receiver</p>
+        <p class="panel-subtitle">Persisted samples, newest first</p>
       </div>
       <span class="meta-tag" data-readings-count>0 readings</span>
     </div>
@@ -202,9 +249,9 @@
           <tr>
             <th scope="col">Recorded</th>
             <th scope="col">pH</th>
-            <th scope="col">TDS</th>
-            <th scope="col">Temperature</th>
-            <th scope="col">Status</th>
+            <th scope="col">TDS (ppm)</th>
+            <th scope="col">Temp (°C)</th>
+            <th scope="col">Source</th>
           </tr>
         </thead>
         <tbody data-readings-body>
@@ -219,7 +266,7 @@
                   </svg>
                 </span>
                 <strong>No readings received yet</strong>
-                <p>The dashboard has not received any sensor data from the receiver.</p>
+                <p>The local database does not contain any sensor readings yet.</p>
               </div>
             </td>
           </tr>

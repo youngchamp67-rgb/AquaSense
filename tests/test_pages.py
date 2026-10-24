@@ -15,10 +15,12 @@ def test_dashboard_renders(client):
     assert "AquaSense" in html
     assert "Water quality overview" in html
     assert "NOT CONNECTED" in html
-    assert "Awaiting receiver integration" in html
+    assert "Recorded data only" in html
     assert "No trend data yet" in html
     assert "No readings received yet" in html
     assert "It does not certify water as safe to drink." in html
+    assert "Phase 2" in html
+    assert 'data-stale-banner hidden' in html
 
 
 def test_dashboard_sensor_cards_render_empty_values(client):
@@ -36,7 +38,7 @@ def test_dashboard_sensor_cards_render_empty_values(client):
 def test_dashboard_does_not_render_numeric_sensor_values(client):
     html = client.get("/").get_data(as_text=True)
 
-    # The only sensor values the page may render in Phase 1 are empty markers.
+    # With an empty test database, the page may render only empty markers.
     for key in ("ph", "tds_ppm", "temperature_c"):
         assert re.search(
             rf'data-sensor-value="{key}">\s*—\s*</output>',

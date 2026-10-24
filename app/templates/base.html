@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#080d10">
-  <meta name="description" content="AquaSense is a local water-quality monitoring dashboard for pH, TDS and temperature readings.">
+  <meta name="description" content="AquaSense is a local dashboard for persisted pH, TDS and temperature readings.">
   <title>{% block title %}AquaSense · Water quality monitor{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}?v={{ app_version }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v={{ app_version }}">
@@ -29,7 +29,7 @@
       </a>
 
       <div class="header-meta">
-        <span class="phase-badge">Phase 1</span>
+        <span class="phase-badge">Phase 2</span>
         <span class="local-chip">
           <span class="local-chip-dot" aria-hidden="true"></span>
           Local instance
@@ -45,7 +45,7 @@
   <footer class="site-footer">
     <div class="shell footer-inner">
       <p>AquaSense is a local monitoring tool. It does not certify water as safe to drink.</p>
-      <p class="footer-meta">v{{ app_version }} · Phase 1</p>
+      <p class="footer-meta">v{{ app_version }} · Phase 2</p>
     </div>
   </footer>
 

@@ -42,7 +42,9 @@ def register_cli(app: Flask) -> None:
         design before any HTTP ingestion route is exposed.
         """
         try:
-            raw_payload = file_path.read_text(encoding="utf-8")
+            # utf-8-sig accepts both plain UTF-8 and files written by Windows
+            # PowerShell 5.1's UTF-8 encoder, which includes a BOM.
+            raw_payload = file_path.read_text(encoding="utf-8-sig")
         except (OSError, UnicodeError) as exc:
             raise click.ClickException(f"Could not read the payload file: {exc}") from None
 

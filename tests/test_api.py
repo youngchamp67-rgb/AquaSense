@@ -6,8 +6,6 @@ from datetime import datetime
 
 import pytest
 
-from app import create_app
-
 ENVELOPE_KEYS = {"ok", "data", "error", "timestamp"}
 
 
@@ -34,7 +32,7 @@ def test_health_reports_application_health(client):
 
     assert data["status"] == "ok"
     assert data["service"] == "aquasense"
-    assert data["version"] == "0.1.0"
+    assert data["version"] == "0.2.0"
     assert isinstance(data["uptime_seconds"], (int, float))
     assert data["uptime_seconds"] >= 0
     assert data["data_source"] == {
@@ -70,6 +68,8 @@ def test_latest_reading_reports_explicit_no_data_state(client):
     }
     assert data["recorded_at"] is None
     assert data["received_at"] is None
+    assert data["source"] is None
+    assert data["packet_sequence"] is None
     assert "No readings have been received" in data["message"]
 
 
@@ -85,6 +85,8 @@ def test_latest_reading_schema_keys_are_stable(client):
         "receiver",
         "recorded_at",
         "received_at",
+        "source",
+        "packet_sequence",
     }
     assert set(data["readings"]) == {"ph", "tds_ppm", "temperature_c"}
     assert set(data["receiver"]) == {
@@ -94,14 +96,8 @@ def test_latest_reading_schema_keys_are_stable(client):
     }
 
 
-def test_waiting_state_when_transport_is_configured_without_data():
-    app = create_app(
-        {
-            "TESTING": True,
-            "SECRET_KEY": "test-only-key",
-            "DATA_SOURCE_CONFIGURED": True,
-        }
-    )
+def test_waiting_state_when_transport_is_configured_without_data(app_factory):
+    app = app_factory(DATA_SOURCE_CONFIGURED=True)
     client = app.test_client()
 
     data = client.get("/api/readings/latest").get_json()["data"]
@@ -126,7 +122,7 @@ def test_waiting_state_when_transport_is_configured_without_data():
 
 
 def test_api_responses_disable_caching(client):
-    for path in ("/api/health", "/api/readings/latest"):
+    for path in ("/api/health", "/api/readings/latest", "/api/readings/history"):
         response = client.get(path)
         assert response.headers["Cache-Control"] == "no-store"
 
@@ -156,7 +152,10 @@ def test_disallowed_api_method_returns_json_error(client):
     assert body["error"]["code"] == "method_not_allowed"
 
 
-@pytest.mark.parametrize("path", ["/api/health", "/api/readings/latest"])
+@pytest.mark.parametrize(
+    "path",
+    ["/api/health", "/api/readings/latest", "/api/readings/history"],
+)
 def test_api_does_not_expose_internal_paths(client, path):
     text = client.get(path).get_data(as_text=True)
 
